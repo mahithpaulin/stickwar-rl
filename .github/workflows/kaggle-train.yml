@@ -1,0 +1,174 @@
+name: kaggle-ppo-train
+
+on:
+  workflow_dispatch:
+    inputs:
+      data_run_id:
+        description: "GitHub Actions run ID containing an episode artifact (blank for synthetic smoke)"
+        required: false
+        default: ""
+      data_artifact:
+        description: "Artifact name containing episode directories"
+        required: false
+        default: ""
+      dataset_id:
+        description: "Private Kaggle dataset id for episodes"
+        required: false
+        default: "mahithpaulin/stickwar-episodes"
+      updates:
+        description: "PPO updates"
+        required: false
+        default: "100"
+      resume_url:
+        description: "Public HTTPS URL of a checkpoint to resume"
+        required: false
+        default: ""
+      release_tag:
+        description: "If set, publish checkpoint/metrics to this GitHub release"
+        required: false
+        default: ""
+      allow_synthetic:
+        description: "Allow the synthetic smoke path (no game data)"
+        type: boolean
+        required: false
+        default: false
+      allow_uncalibrated_reward:
+        description: "Debug only: train on uncalibrated rewards"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CLI dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install kaggle==2.0.1 numpy pillow
+
+      - name: Authenticate Kaggle
+        env:
+          KAGGLE_ACCESS_TOKEN: ${{ secrets.KAGGLE_ACCESS_TOKEN }}
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${KAGGLE_ACCESS_TOKEN:-}" ]; then
+            mkdir -p "$HOME/.kaggle"
+            printf '%s' "$KAGGLE_ACCESS_TOKEN" > "$HOME/.kaggle/access_token"
+            chmod 600 "$HOME/.kaggle/access_token"
+          fi
+          if [ -z "${KAGGLE_ACCESS_TOKEN:-}" ] && { [ -z "${KAGGLE_USERNAME:-}" ] || [ -z "${KAGGLE_KEY:-}" ]; }; then
+            echo "BLOCKED: configure Kaggle credentials."
+            exit 1
+          fi
+          kaggle config view
+
+      - name: Fetch episode artifact
+        if: inputs.data_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -z "${{ inputs.data_artifact }}" ]; then
+            echo "data_artifact is required when data_run_id is set"
+            exit 1
+          fi
+          mkdir -p artifacts/input
+          gh run download "${{ inputs.data_run_id }}" -n "${{ inputs.data_artifact }}" -D artifacts/input
+          META="$(find artifacts/input -name meta.json | head -1)"
+          if [ -z "$META" ]; then
+            echo "No episode meta.json found in artifact"
+            exit 1
+          fi
+          EPISODES="$(dirname "$(dirname "$META")")"
+          echo "EPISODES=$EPISODES" >> "$GITHUB_ENV"
+          echo "Found episodes: $EPISODES"
+
+      - name: Publish private Kaggle dataset
+        if: env.EPISODES != ''
+        run: |
+          set -euo pipefail
+          python scripts/prepare_kaggle_dataset.py \
+            --episodes "$EPISODES" \
+            --out artifacts/kaggle-dataset \
+            --dataset-id "${{ inputs.dataset_id }}"
+          if kaggle datasets status "${{ inputs.dataset_id }}" >/dev/null 2>&1; then
+            kaggle datasets version -p artifacts/kaggle-dataset -m "episodes $(date -u +%Y%m%dT%H%M%SZ)" -r zip
+          else
+            kaggle datasets create -p artifacts/kaggle-dataset -r zip
+          fi
+          for _ in $(seq 1 60); do
+            state="$(kaggle datasets status "${{ inputs.dataset_id }}" 2>/dev/null || true)"
+            echo "$state"
+            case "$state" in *ready*|*READY*|*ok*|*OK*) break;; esac
+            sleep 10
+          done
+
+      - name: Stage kernel
+        env:
+          ALLOW_SYNTH: ${{ inputs.allow_synthetic }}
+          ALLOW_UNCAL: ${{ inputs.allow_uncalibrated_reward }}
+        run: |
+          ARGS=(--git-ref "$GITHUB_SHA" --updates "${{ inputs.updates }}" \
+                --resume-url "${{ inputs.resume_url }}" --out artifacts/kaggle-job)
+          if [ "$ALLOW_SYNTH" = "true" ]; then ARGS+=(--allow-synthetic); fi
+          if [ "$ALLOW_UNCAL" = "true" ]; then ARGS+=(--allow-uncalibrated-reward); fi
+          if [ -n "${EPISODES:-}" ]; then ARGS+=(--dataset "${{ inputs.dataset_id }}"); fi
+          python scripts/stage_kaggle_job.py "${ARGS[@]}"
+
+      - name: Refuse unsafe synthetic training
+        if: inputs.data_run_id == '' && inputs.allow_synthetic != true
+        run: |
+          echo "BLOCKED: no episode data supplied and allow_synthetic is false. Expensive training is not started."
+          exit 1
+
+      - name: Push training and wait
+        run: |
+          python scripts/kaggle_job.py push --job artifacts/kaggle-job \
+            --wait --timeout 18000 --poll 60 --download artifacts/kaggle-train-out
+
+      - name: Validate training evidence
+        if: always()
+        run: |
+          if [ -f artifacts/kaggle-train-out/summary.json ]; then
+            python3 scripts/kaggle_train_report.py artifacts/kaggle-train-out | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No training summary downloaded." | tee -a "$GITHUB_STEP_SUMMARY"
+            ls -la artifacts/kaggle-train-out || true
+          fi
+
+      - name: Publish checkpoint release
+        if: inputs.release_tag != '' && success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.release_tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/kaggle-train-out/checkpoint.pt artifacts/kaggle-train-out/metrics.json artifacts/kaggle-train-out/summary.json --clobber
+          else
+            gh release create "$TAG" artifacts/kaggle-train-out/checkpoint.pt artifacts/kaggle-train-out/metrics.json artifacts/kaggle-train-out/summary.json \
+              --title "Stick War PPO $TAG" \
+              --notes "Batch PPO checkpoint and metrics. Training data and game APK are not included."
+          fi
+
+      - name: Upload training artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kaggle-ppo-train-${{ github.run_id }}
+          path: artifacts/kaggle-train-out
+          if-no-files-found: warn
+          retention-days: 30

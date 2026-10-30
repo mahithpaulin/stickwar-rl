@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "calibrated": false,
+  "source": "provisional-no-live-calibration",
+  "bars": [],
+  "enemy_bar": "enemy_hp",
+  "own_bar": "own_hp",
+  "enemy_weight": 2.0,
+  "own_weight": -2.0,
+  "win_bonus": 20.0,
+  "loss_penalty": -20.0,
+  "step_penalty": -0.005,
+  "reward_clip": 20.0,
+  "win_template": null,
+  "loss_template": null,
+  "template_threshold": 0.92,
+  "notes": "Sparse win/loss reward only. Statue health bars are in world space and need calibrated crops plus win/loss templates from real gameplay before this reward can be used for training. Training refuses uncalibrated reward configs unless --allow-uncalibrated-reward."
+}

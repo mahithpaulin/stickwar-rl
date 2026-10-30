@@ -1,0 +1,86 @@
+name: evaluate
+
+on:
+  workflow_dispatch:
+    inputs:
+      checkpoint_url:
+        description: "Public HTTPS URL to a PPO checkpoint .pt"
+        required: true
+      data_run_id:
+        description: "GitHub Actions run ID with an episode artifact"
+        required: true
+      data_artifact:
+        description: "Episode artifact name"
+        required: true
+      val_fraction:
+        description: "Episode fraction held out for evaluation"
+        required: false
+        default: "0.2"
+      allow_uncalibrated_reward:
+        description: "Debug only: allow uncalibrated reward metadata"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CPU dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pillow pytest
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Download checkpoint
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/eval
+          curl --fail --location --retry 3 --output artifacts/eval/checkpoint.pt "${{ inputs.checkpoint_url }}"
+          test -s artifacts/eval/checkpoint.pt
+
+      - name: Download episodes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/input
+          gh run download "${{ inputs.data_run_id }}" -n "${{ inputs.data_artifact }}" -D artifacts/input
+          META="$(find artifacts/input -name meta.json | head -1)"
+          if [ -z "$META" ]; then echo "no episodes"; exit 1; fi
+          echo "EPISODES=$(dirname "$(dirname "$META")")" >> "$GITHUB_ENV"
+
+      - name: Run offline evaluation
+        env:
+          ALLOW_UNCAL: ${{ inputs.allow_uncalibrated_reward }}
+        run: |
+          ARGS=(--checkpoint artifacts/eval/checkpoint.pt --data "$EPISODES"
+                --out artifacts/eval --val-fraction "${{ inputs.val_fraction }}" --device cpu)
+          if [ "$ALLOW_UNCAL" = "true" ]; then ARGS+=(--allow-uncalibrated-reward); fi
+          python -m stickwar_rl.evaluate "${ARGS[@]}"
+
+      - name: Summarize
+        if: always()
+        run: |
+          if [ -f artifacts/eval/eval.md ]; then
+            cat artifacts/eval/eval.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload evaluation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-${{ github.run_id }}
+          path: artifacts/eval
+          if-no-files-found: warn
+          retention-days: 30

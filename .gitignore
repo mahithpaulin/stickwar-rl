@@ -1,0 +1,33 @@
+# Game binaries are never committed.
+*.apk
+*.apks
+*.xapk
+*.obb
+apk/
+apks/
+
+# Experiment outputs
+artifacts/
+runs/
+data/
+checkpoints/
+*.pt
+*.pth
+*.npz
+*.mp4
+*.log
+*.jsonl
+!state/*.json
+!configs/*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+
+# OS
+.DS_Store

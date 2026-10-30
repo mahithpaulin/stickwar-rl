@@ -1,0 +1,146 @@
+name: android-game
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: "HTTPS URL to a legally obtained Stick War APK (or leave blank and use the STICKWAR_APK_URL secret)"
+        required: false
+        default: ""
+      apk_sha256:
+        description: "Expected SHA-256 of the APK (optional but recommended)"
+        required: false
+        default: ""
+      package:
+        description: "Android package name"
+        required: false
+        default: "com.maxgames.stickwarlegacy"
+      activity:
+        description: "Optional explicit activity component"
+        required: false
+        default: ""
+      duration_s:
+        description: "Episode duration in seconds"
+        required: false
+        default: "45"
+      episodes:
+        description: "Number of episodes to record"
+        required: false
+        default: "1"
+      require_match:
+        description: "Fail unless an in-match episode is verified (requires a calibrated reset macro)"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  game:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install observation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pillow
+
+      - name: Resolve APK source
+        id: apk
+        env:
+          INPUT_URL: ${{ inputs.apk_url }}
+          SECRET_URL: ${{ secrets.STICKWAR_APK_URL }}
+          INPUT_SHA: ${{ inputs.apk_sha256 }}
+          SECRET_SHA: ${{ secrets.STICKWAR_APK_SHA256 }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/android-game
+          url="${INPUT_URL:-${SECRET_URL:-}}"
+          sha="${INPUT_SHA:-${SECRET_SHA:-}}"
+          if [ -z "$url" ]; then
+            echo "BLOCKED: no APK source configured."
+            echo "Provide a legally obtained APK via the apk_url input or set the STICKWAR_APK_URL repository secret."
+            echo "No game binary is stored in this repository or its public history."
+            printf '%s\n' '{"ok": false, "blocked": true, "reason": "no APK source configured", "remedy": "supply a legally obtained APK via apk_url or STICKWAR_APK_URL"}' > artifacts/android-game/blocked.json
+            exit 1
+          fi
+          APK="$RUNNER_TEMP/stickwar.apk"
+          curl --fail --location --retry 3 --retry-delay 2 --output "$APK" "$url"
+          echo "downloaded bytes: $(stat -c %s "$APK")"
+          if [ -n "$sha" ]; then
+            actual="$(sha256sum "$APK" | awk '{print $1}')"
+            if [ "$actual" != "$sha" ]; then
+              echo "SHA256 MISMATCH: expected $sha got $actual"
+              exit 1
+            fi
+            echo "sha256 verified"
+          else
+            sha256sum "$APK"
+          fi
+          echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
+
+      - name: Verify and enable KVM
+        run: |
+          ls -l /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install APK, launch, tap, record, reset
+        if: steps.apk.outputs.apk_path != ''
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          APK_PATH: ${{ steps.apk.outputs.apk_path }}
+          GAME_PACKAGE: ${{ inputs.package }}
+          GAME_ACTIVITY: ${{ inputs.activity }}
+          GAME_DURATION: ${{ inputs.duration_s }}
+          GAME_EPISODES: ${{ inputs.episodes }}
+          REQUIRE_MATCH: ${{ inputs.require_match }}
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_4
+          disable-animations: true
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+            -camera-back none -camera-front none
+          script: bash scripts/game_workflow.sh
+
+      - name: Summarize
+        if: always()
+        run: |
+          {
+            echo "## Android game smoke"
+            if [ -f artifacts/android-game/verification.json ]; then
+              python3 scripts/summarize_verification.py artifacts/android-game/verification.json
+            elif [ -f artifacts/android-game/blocked.json ]; then
+              echo '```json'
+              cat artifacts/android-game/blocked.json
+              echo '```'
+            else
+              echo "No verification.json produced. See the job log."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evidence (never the APK)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-game-${{ github.run_id }}
+          path: artifacts/android-game
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Remove local APK
+        if: always()
+        run: rm -f "$RUNNER_TEMP/stickwar.apk"

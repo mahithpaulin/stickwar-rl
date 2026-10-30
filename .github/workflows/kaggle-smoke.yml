@@ -1,0 +1,72 @@
+name: kaggle-gpu-smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/kaggle-smoke.yml"
+      - "kaggle/gpu_smoke/**"
+      - "scripts/kaggle_job.py"
+      - "scripts/kaggle_smoke_report.py"
+
+permissions:
+  contents: read
+
+jobs:
+  gpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Kaggle CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install kaggle==2.0.1
+
+      - name: Authenticate
+        env:
+          KAGGLE_ACCESS_TOKEN: ${{ secrets.KAGGLE_ACCESS_TOKEN }}
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${KAGGLE_ACCESS_TOKEN:-}" ]; then
+            mkdir -p "$HOME/.kaggle"
+            printf '%s' "$KAGGLE_ACCESS_TOKEN" > "$HOME/.kaggle/access_token"
+            chmod 600 "$HOME/.kaggle/access_token"
+          fi
+          if [ -z "${KAGGLE_ACCESS_TOKEN:-}" ] && { [ -z "${KAGGLE_USERNAME:-}" ] || [ -z "${KAGGLE_KEY:-}" ]; }; then
+            echo "BLOCKED: configure KAGGLE_ACCESS_TOKEN (preferred) or KAGGLE_USERNAME + KAGGLE_KEY repository secrets."
+            exit 1
+          fi
+          kaggle config view
+
+      - name: Push GPU smoke and wait
+        run: |
+          python scripts/kaggle_job.py push --job kaggle/gpu_smoke \
+            --wait --timeout 1800 --poll 20 --download artifacts/kaggle-smoke
+
+      - name: Validate GPU evidence
+        if: always()
+        run: |
+          if [ -f artifacts/kaggle-smoke/metrics.json ]; then
+            python3 scripts/kaggle_smoke_report.py artifacts/kaggle-smoke | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No metrics.json downloaded. Inspect artifacts and the Kaggle log." | tee -a "$GITHUB_STEP_SUMMARY"
+            ls -la artifacts/kaggle-smoke || true
+          fi
+
+      - name: Upload Kaggle smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kaggle-gpu-smoke-${{ github.run_id }}
+          path: artifacts/kaggle-smoke
+          if-no-files-found: warn
+          retention-days: 14

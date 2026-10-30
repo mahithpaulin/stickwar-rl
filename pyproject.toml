@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stickwar-rl"
+version = "0.1.0"
+description = "ADB-driven reinforcement learning research platform for Stick War: Legacy"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "mahithpaulin" }]
+dependencies = [
+    "numpy>=1.24",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+train = ["torch>=2.1"]
+dev = ["pytest>=8.0", "torch>=2.1"]
+
+[project.scripts]
+stickwar-train = "stickwar_rl.train:main"
+stickwar-eval = "stickwar_rl.evaluate:main"
+stickwar-report = "stickwar_rl.metrics:main"
+
+[tool.setuptools.packages.find]
+include = ["stickwar_rl*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "torch: requires PyTorch",
+    "numpy: requires numpy and Pillow",
+]

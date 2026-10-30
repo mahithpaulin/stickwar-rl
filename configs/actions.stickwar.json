@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "orientation": "landscape",
+  "source": "play-store-screenshot-provisional",
+  "notes": "Coordinates derived from the official Google Play 16:9 landscape screenshots on 2026-10-30. Unit cards and controls are in the top HUD, not the bottom. MUST be re-verified on the target emulator/device with a real match before use; UI safe areas may shift.",
+  "actions": [
+    {
+      "name": "noop",
+      "x": 0.5,
+      "y": 0.5,
+      "hold_ms": 0,
+      "description": "do not touch the screen"
+    },
+    {
+      "name": "train_miner",
+      "x": 0.065,
+      "y": 0.085,
+      "hold_ms": 40,
+      "description": "top-left hammer card"
+    },
+    {
+      "name": "train_swordwrath",
+      "x": 0.16,
+      "y": 0.081,
+      "hold_ms": 40,
+      "description": "top-left sword card"
+    },
+    {
+      "name": "train_archidon",
+      "x": 0.26,
+      "y": 0.086,
+      "hold_ms": 40,
+      "description": "top-left bow card"
+    },
+    {
+      "name": "train_spearton",
+      "x": 0.356,
+      "y": 0.081,
+      "hold_ms": 40,
+      "description": "top-left helmet card"
+    },
+    {
+      "name": "train_magikill",
+      "x": 0.463,
+      "y": 0.081,
+      "hold_ms": 40,
+      "description": "top-left magikill card"
+    },
+    {
+      "name": "train_giant",
+      "x": 0.565,
+      "y": 0.081,
+      "hold_ms": 40,
+      "description": "top-left giant card"
+    },
+    {
+      "name": "spell",
+      "x": 0.058,
+      "y": 0.284,
+      "hold_ms": 60,
+      "description": "left spell button"
+    },
+    {
+      "name": "retreat",
+      "x": 0.868,
+      "y": 0.068,
+      "hold_ms": 120,
+      "description": "left-arrow retreat control"
+    },
+    {
+      "name": "defend",
+      "x": 0.912,
+      "y": 0.167,
+      "hold_ms": 120,
+      "description": "shield / defend control"
+    },
+    {
+      "name": "attack",
+      "x": 0.955,
+      "y": 0.248,
+      "hold_ms": 120,
+      "description": "crossed-swords attack control"
+    }
+  ]
+}

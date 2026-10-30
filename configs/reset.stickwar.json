@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "description": "Reset macro for Stick War: Legacy. Empty until calibrated on a real device.",
+  "launch_wait_s": 20.0,
+  "steps": [],
+  "notes": "Add wait/tap/swipe steps that navigate from the launch screen into a fresh match."
+}

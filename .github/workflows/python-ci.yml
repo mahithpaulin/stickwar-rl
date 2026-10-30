@@ -1,0 +1,68 @@
+name: python-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install CPU dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pillow pytest
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Compile
+        run: python -m compileall -q stickwar_rl scripts
+
+      - name: Unit tests
+        run: python -m pytest -q
+
+      - name: Synthetic pipeline smoke
+        run: |
+          python -m stickwar_rl.train --synthetic --updates 3 --out runs/ci \
+            --device cpu --epochs 1 --minibatch-size 32 --frame-size 32 \
+            --frame-stack 2 --synthetic-samples 64
+          python -m stickwar_rl.evaluate --synthetic --out runs/ci/eval --device cpu
+          python -m stickwar_rl.metrics --run runs/ci
+          test -f runs/ci/checkpoints/latest.pt
+          test -f runs/ci/report/dashboard.html
+          python - <<'PY'
+          import json
+          summary = json.load(open("runs/ci/summary.json"))
+          assert summary["updates_completed"] == 3, summary
+          assert summary["mode"] == "batch_ppo_plus_bc_anchor", summary
+          eval_data = json.load(open("runs/ci/eval/eval.json"))
+          assert "clipped_ips_reward" in eval_data["policy"]
+          print("SYNTHETIC_PIPELINE_OK")
+          PY
+
+      - name: Validate Kaggle job metadata
+        run: |
+          python scripts/kaggle_job.py validate --job kaggle/gpu_smoke
+          python scripts/kaggle_job.py validate --job kaggle/ppo_train
+
+      - name: Upload CI artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-ci-${{ github.run_id }}
+          path: |
+            runs/ci
+          if-no-files-found: warn
+          retention-days: 14

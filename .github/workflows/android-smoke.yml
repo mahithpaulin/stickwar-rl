@@ -1,0 +1,74 @@
+name: android-smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/android-smoke.yml"
+      - "scripts/emulator_smoke.sh"
+      - "scripts/smoke_episode.py"
+      - "stickwar_rl/**"
+      - "configs/**"
+
+permissions:
+  contents: read
+
+jobs:
+  emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install observation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pillow
+
+      - name: Verify and enable KVM
+        run: |
+          ls -l /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Provision emulator and record smoke episode
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_4
+          disable-animations: true
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+            -camera-back none -camera-front none
+          script: bash scripts/emulator_smoke.sh
+
+      - name: Summarize
+        if: always()
+        run: |
+          {
+            echo "## Android emulator smoke"
+            if [ -f artifacts/android-smoke/verification.json ]; then
+              python3 scripts/summarize_verification.py artifacts/android-smoke/verification.json
+            else
+              echo "No verification.json produced. See the job log."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Android smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-smoke-${{ github.run_id }}
+          path: artifacts/android-smoke
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,55 @@
+{
+  "project": "stickwar-rl",
+  "updated_at": "2026-10-30T19:10:00Z",
+  "repository": "https://github.com/mahithpaulin/stickwar-rl",
+  "environment": {
+    "host": "Termux on Android 13 (RMX3430, mt6768, aarch64)",
+    "ram_gb": 3.7,
+    "cuda": false,
+    "android_emulator": false,
+    "github_auth": "gh CLI, repo+workflow scopes",
+    "kaggle_auth": "CLI 2.0.1, access token present",
+    "existing_apk": false
+  },
+  "milestones": {
+    "A_github_actions_android": "pending_first_run",
+    "B_original_apk_install_launch": "blocked_no_apk",
+    "C_screenshots": "pending_first_run",
+    "D_touch_input": "pending_first_run",
+    "E_game_episode": "blocked_by_B",
+    "F_kaggle_gpu_smoke": "verified"
+  },
+  "verified": [
+    "Kaggle T4 kernel stickwar-gpu-smoke COMPLETE: CUDA 12.8, torch 2.11.0+cu128, 3 updates, checkpoint"
+  ],
+  "blockers": [
+    {
+      "id": "apk",
+      "reason": "No legally obtained Stick War: Legacy APK is present; third-party APK mirrors were not used.",
+      "unblock": "Set STICKWAR_APK_URL/SHA or install from Google Play on the user's device and provide the APK via a private URL."
+    },
+    {
+      "id": "reward_calibration",
+      "reason": "No in-match screenshot exists, so bar crops and win/loss templates are uncalibrated.",
+      "unblock": "Run the APK workflow, capture an in-match screenshot, calibrate configs, set calibrated=true."
+    },
+    {
+      "id": "arm_abi",
+      "reason": "Hosted emulator is x86_64; the Unity APK may be ARM-only.",
+      "unblock": "Check reported ABIs; use a physical ARM device or a compatible system image/device farm."
+    }
+  ],
+  "next_actions": [
+    "Push the repository and run python-ci + android-smoke on hosted Actions.",
+    "Run kaggle-gpu-smoke via Actions with repository secrets.",
+    "Obtain a legally supplied APK, run android-game, report ABI/install/launch facts.",
+    "Calibrate actions, reward, and reset macro from a real match.",
+    "Only then run kaggle-ppo-train with allow_uncalibrated_reward=false."
+  ],
+  "safety": [
+    "No APK or game assets in git/artifacts/releases.",
+    "No secrets printed or committed.",
+    "No pm clear/uninstall without approval.",
+    "No fabricated success: Android B-E remain blocked/pending."
+  ]
+}
