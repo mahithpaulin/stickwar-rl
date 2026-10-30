@@ -14,12 +14,12 @@ No ads, purchases, or DRM are bypassed.
 
 | Milestone | Status | Evidence |
 |---|---|---|
-| A. GitHub Actions provisions Android emulator | Pending workflow run | `.github/workflows/android-smoke.yml` |
+| A. GitHub Actions provisions Android emulator | **Verified** | Actions run `41066138143`: KVM, API 30 x86_64 Pixel 4, booted |
 | B. Original APK installs and launches | **Blocked: no APK supplied** | `android-game.yml` fails with `BLOCKED` instead of faking |
-| C. Screenshots from Android | Pending workflow run | `scripts/smoke_episode.py` |
-| D. Automated touch input | Pending workflow run | Settings search tap + typed text |
-| E. Game episode recorded | **Blocked by B**; app-level episode recorder verified separately | `stickwar_rl/runner.py` |
-| F. Kaggle GPU training test | **Verified locally** | Tesla T4, CUDA 12.8, torch 2.11.0, 3 PPO updates, 1.4 MB checkpoint |
+| C. Screenshots from Android | **Verified** | Three non-blank PNGs + 289 KB MP4, run `41066138143` |
+| D. Automated touch input | **Verified** | Found Settings search widget, tapped, typed `wifi`, text present in UI dump |
+| E. Game episode recorded | **Blocked by B**; episode format verified with Settings | 3 steps / 3 frames from `smoke-settings`, not gameplay |
+| F. Kaggle GPU training test | **Verified locally and via Actions** | Tesla T4, CUDA 12.8, torch 2.11.0, 3 PPO updates, 1,388,725-byte checkpoint |
 
 See [`docs/RESULTS.md`](docs/RESULTS.md) for raw evidence and
 [`docs/MILESTONES.md`](docs/MILESTONES.md) for acceptance criteria.
@@ -41,6 +41,7 @@ See [`docs/RESULTS.md`](docs/RESULTS.md) for raw evidence and
 - `stickwar_rl/train.py`, `evaluate.py`, `metrics.py` — training, offline/live
   evaluation, JSONL metrics, Markdown/HTML dashboard.
 - `scripts/kaggle_job.py` — push/poll/download Kaggle kernels without a hosted runner.
+- GitHub Actions run evidence: Android `41066138143`, Kaggle `41065538141`, CI `41066138098`.
 - GitHub Actions: CI, Android smoke, game smoke, Kaggle GPU smoke, Kaggle
   training, offline evaluation.
 - Kaggle jobs: `kaggle/gpu_smoke` (verified T4 test) and `kaggle/ppo_train`
@@ -70,7 +71,11 @@ proves the plumbing, not game skill.
 Run **Actions → android-smoke → Run workflow**. It provisions an API 30
 `google_apis` x86_64 Pixel 4 AVD with KVM, captures screenshots, taps the Settings
 search field, types text, records a short MP4, and writes `verification.json`.
-It is explicitly labelled infrastructure-only; it is not Stick War gameplay.
+It is explicitly labelled infrastructure-only; it is not Stick War gameplay. The
+verified run booted `sdk_gphone_x86_64` (SDK 30), found
+`com.android.settings:id/search_action_bar_title`, tapped it, typed `wifi`,
+confirmed the text in a UI dump, recorded a 289 KB MP4, and wrote a 3-step /
+3-frame episode.
 
 ### 2. Original game APK
 

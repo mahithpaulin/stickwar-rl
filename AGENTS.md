@@ -11,10 +11,12 @@
 
 ## Current verified state
 
-- Kaggle GPU smoke: T4, CUDA 12.8, torch 2.11.0, 3 updates, checkpoint.
-- Local non-torch tests: 32 passing.
-- GitHub Actions: workflows committed; hosted Android run not yet executed.
-- Original APK: absent, so B–E blocked.
+- Kaggle GPU smoke: T4, CUDA 12.8, torch 2.11.0, 3 updates, checkpoint
+  (Actions run 41065538141).
+- Local tests: 32 passed, 2 skipped (torch); CI run 41066138098 passed.
+- GitHub Actions Android infrastructure: verified (run 41066138143), including a
+  real Settings search tap and typed-text check.
+- Original APK: absent, so B and game-level E are blocked. Do not claim gameplay.
 
 ## Commands
 

@@ -1,6 +1,6 @@
 {
   "project": "stickwar-rl",
-  "updated_at": "2026-10-30T19:10:00Z",
+  "updated_at": "2026-10-30T19:25:00Z",
   "repository": "https://github.com/mahithpaulin/stickwar-rl",
   "environment": {
     "host": "Termux on Android 13 (RMX3430, mt6768, aarch64)",
@@ -12,15 +12,17 @@
     "existing_apk": false
   },
   "milestones": {
-    "A_github_actions_android": "pending_first_run",
+    "A_github_actions_android": "verified_run_41066138143",
     "B_original_apk_install_launch": "blocked_no_apk",
-    "C_screenshots": "pending_first_run",
-    "D_touch_input": "pending_first_run",
-    "E_game_episode": "blocked_by_B",
-    "F_kaggle_gpu_smoke": "verified"
+    "C_screenshots": "verified_run_41066138143",
+    "D_touch_input": "verified_run_41066138143",
+    "E_game_episode": "blocked_by_B_episode_format_verified_with_settings",
+    "F_kaggle_gpu_smoke": "verified_local_and_actions_41065538141"
   },
   "verified": [
-    "Kaggle T4 kernel stickwar-gpu-smoke COMPLETE: CUDA 12.8, torch 2.11.0+cu128, 3 updates, checkpoint"
+    "GitHub Actions android-smoke 41066138143: API30 x86_64 booted, screenshots, Settings search widget tap, typed wifi visible in UI dump, MP4, 3-step episode",
+    "GitHub Actions kaggle-gpu-smoke 41065538141: Tesla T4, CUDA 12.8, torch 2.11.0+cu128, 3 updates, 1,388,725-byte checkpoint",
+    "GitHub Actions python-ci 41066138098: compile, 32 tests + 2 skipped torch tests, synthetic train/eval/report, metadata validation"
   ],
   "blockers": [
     {
@@ -40,11 +42,12 @@
     }
   ],
   "next_actions": [
-    "Push the repository and run python-ci + android-smoke on hosted Actions.",
-    "Run kaggle-gpu-smoke via Actions with repository secrets.",
     "Obtain a legally supplied APK, run android-game, report ABI/install/launch facts.",
-    "Calibrate actions, reward, and reset macro from a real match.",
-    "Only then run kaggle-ppo-train with allow_uncalibrated_reward=false."
+    "If the x86_64 install fails on ABI, use the physical ARM phone or another real ARM device as the ADB actor.",
+    "Calibrate actions, reward, and reset macro from a real match; set calibrated=true.",
+    "Run android-game with require_match=true to prove a gameplay episode.",
+    "Only then run kaggle-ppo-train with allow_uncalibrated_reward=false.",
+    "Evaluate offline and live against the random baseline; publish results without overclaiming."
   ],
   "safety": [
     "No APK or game assets in git/artifacts/releases.",
