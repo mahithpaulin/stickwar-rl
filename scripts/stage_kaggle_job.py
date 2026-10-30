@@ -42,6 +42,9 @@ def main() -> int:
         "STICKWAR_ALLOW_SYNTHETIC": bool(args.allow_synthetic),
         "STICKWAR_ALLOW_UNCALIBRATED_REWARD": bool(args.allow_uncalibrated_reward),
     }
+    if args.dataset:
+        slug = args.dataset[-1].split("/")[-1]
+        overrides["STICKWAR_DATA"] = f"/kaggle/input/{slug}/episodes"
     literal = json.dumps(overrides, indent=2)
     if "OVERRIDES = {}" not in code:
         raise SystemExit("template does not contain the OVERRIDES placeholder")

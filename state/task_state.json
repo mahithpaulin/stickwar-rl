@@ -28,7 +28,8 @@
     {
       "id": "apk",
       "reason": "No legally obtained Stick War: Legacy APK is present; third-party APK mirrors were not used.",
-      "unblock": "Set STICKWAR_APK_URL/SHA or install from Google Play on the user's device and provide the APK via a private URL."
+      "unblock": "Set STICKWAR_APK_URL/SHA or install from Google Play on the user's device and provide the APK via a private URL.",
+      "evidence": "android-game run 41066913369 uploaded blocked.json and failed explicitly"
     },
     {
       "id": "reward_calibration",

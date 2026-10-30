@@ -63,7 +63,11 @@ This file separates measurements from assumptions. Times are UTC.
 ## Android game (B, E): BLOCKED
 
 No original APK exists on the machine and none was downloaded from third-party
-mirrors. The `android-game` workflow writes `blocked.json` and fails instead of
-faking a launch. E (a real game episode) is therefore blocked by B; the episode
+mirrors. The `android-game` workflow was exercised without an APK in run
+[41066913369](https://github.com/mahithpaulin/stickwar-rl/actions/runs/41066913369):
+it failed at `Resolve APK source` and uploaded
+`blocked.json` = `{"ok": false, "blocked": true, "reason": "no APK source
+configured", "remedy": "supply a legally obtained APK via apk_url or
+STICKWAR_APK_URL"}`. It did not fake a launch. E (a real game episode) is therefore blocked by B; the episode
 recorder itself is verified only with Settings data. The expected ABI risk is
 documented in `docs/ANDROID_COMPATIBILITY.md`.

@@ -21,8 +21,10 @@ artifact/log that another person can inspect.
   foreground app, screenshot is non-blank.
 - Blocker: no legally obtained Stick War APK is present on this machine; no
   third-party APK was downloaded.
-- Status: **blocked pending user-supplied APK**. The workflow fails with an
-  explicit `BLOCKED` record, not a fabricated pass.
+- Status: **blocked pending user-supplied APK**, confirmed by run
+  [41066913369](https://github.com/mahithpaulin/stickwar-rl/actions/runs/41066913369):
+  `blocked.json` was uploaded and the job failed explicitly instead of faking a
+  launch.
 
 ## C. Screenshots can be captured
 

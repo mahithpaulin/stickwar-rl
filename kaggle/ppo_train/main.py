@@ -40,7 +40,13 @@ def log(**kw):
 def ensure_repo():
     if not (WORK / "stickwar_rl").exists():
         log(event="clone", repo=REPO_URL, ref=REF)
-        subprocess.check_call(["git", "clone", "--depth", "1", "--branch", REF, REPO_URL, str(WORK)])
+        if WORK.exists():
+            shutil.rmtree(WORK)
+        WORK.mkdir(parents=True)
+        subprocess.check_call(["git", "-C", str(WORK), "init", "-q"])
+        subprocess.check_call(["git", "-C", str(WORK), "remote", "add", "origin", REPO_URL])
+        subprocess.check_call(["git", "-C", str(WORK), "fetch", "-q", "--depth", "1", "origin", REF])
+        subprocess.check_call(["git", "-C", str(WORK), "checkout", "-q", "--detach", "FETCH_HEAD"])
     sys.path.insert(0, str(WORK))
     import torch
     info = {

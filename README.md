@@ -41,7 +41,9 @@ See [`docs/RESULTS.md`](docs/RESULTS.md) for raw evidence and
 - `stickwar_rl/train.py`, `evaluate.py`, `metrics.py` — training, offline/live
   evaluation, JSONL metrics, Markdown/HTML dashboard.
 - `scripts/kaggle_job.py` — push/poll/download Kaggle kernels without a hosted runner.
-- GitHub Actions run evidence: Android `41066138143`, Kaggle `41065538141`, CI `41066138098`.
+- GitHub Actions run evidence: Android `41066138143`, Kaggle `41065538141`, CI
+  `41066138098`; the no-APK block is demonstrated by `android-game` run
+  `41066913369`.
 - GitHub Actions: CI, Android smoke, game smoke, Kaggle GPU smoke, Kaggle
   training, offline evaluation.
 - Kaggle jobs: `kaggle/gpu_smoke` (verified T4 test) and `kaggle/ppo_train`
