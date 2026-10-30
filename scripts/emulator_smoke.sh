@@ -21,6 +21,13 @@ if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" != "1" ]
   exit 1
 fi
 
+adb shell settings put global hide_error_dialogs 1 || true
+adb shell settings put global window_animation_scale 0 || true
+adb shell settings put global transition_animation_scale 0 || true
+adb shell settings put global animator_duration_scale 0 || true
+adb shell input keyevent KEYCODE_WAKEUP || true
+adb shell wm dismiss-keyguard || true
+sleep 5
 adb shell wm size | tee "$ART/wm-size.txt"
 adb shell wm density | tee "$ART/wm-density.txt"
 adb shell getprop ro.build.version.sdk | tee "$ART/sdk.txt"
