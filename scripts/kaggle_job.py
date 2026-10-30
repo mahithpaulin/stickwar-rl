@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
 import subprocess
 import sys
 import time
@@ -17,7 +19,13 @@ from pathlib import Path
 
 
 def kaggle_cmd() -> list[str]:
-    return [sys.executable, "-m", "kaggle"]
+    override = os.environ.get("KAGGLE_BIN")
+    if override:
+        return [override]
+    found = shutil.which("kaggle")
+    if found:
+        return [found]
+    return [sys.executable, "-m", "kaggle.cli"]
 
 
 def run(args: list[str], timeout: float | None = None) -> subprocess.CompletedProcess:

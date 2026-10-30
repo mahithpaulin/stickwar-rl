@@ -89,11 +89,13 @@ jobs:
       - name: Verify and enable KVM
         run: |
           ls -l /dev/kvm
-          test -r /dev/kvm
-          test -w /dev/kvm
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+          ls -l /dev/kvm
 
       - name: Install APK, launch, tap, record, reset
         if: steps.apk.outputs.apk_path != ''
